@@ -7,11 +7,14 @@ import settings
 from apis import ApiEntry
 from libs import DataBase
 
+# /xxx/webPytest
+_ROOT_ = Path(__file__).parent.parent
+
 
 class MixinSession:
     # 提供路径，配置，session和数据库
     def __init__(self):
-        self.root: Path = Path()
+        self.root: Path = _ROOT_
         self.config: settings.Config = settings.Config()
         self.api_session = requests.Session()
         self.USERNAME_ID: str = self._apiLogin()

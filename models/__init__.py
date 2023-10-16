@@ -1,3 +1,4 @@
-__all__ = ("ProjectOut",)
+__all__ = ("ProjectOut", "Section")
 
 from .project import ProjectOut
+from .bundle import Section
