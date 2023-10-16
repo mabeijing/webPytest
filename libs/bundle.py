@@ -19,6 +19,7 @@ class Bundle:
         self._param: dict[str, Any] = param
         self._mixin = mixin
 
+        self.storage: Storage = Storage()  # 用例数据存储区
         self.section: Section = Section.model_validate(self._param)  # 参数化模型
         self.project: ProjectOut = self._mixin.api.project.search_detail(self)  # 系统数据模型
-        self.storage: Storage = Storage()  # 用例数据存储区
+

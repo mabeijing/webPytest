@@ -143,7 +143,7 @@ class ProjectOut(BaseModel):
             for p in products
         ]
 
-    def to_create_jobs(self, bundle: Bundle):
+    def to_create_job(self, bundle: Bundle):
         components = [item["componentName"] for item in bundle.section.components]
         locales = bundle.section.locales
         fullJob = 1
@@ -159,36 +159,6 @@ class ProjectOut(BaseModel):
             "projectID": self.projectID,
             "projectName": self.projectName,
             "orderName": bundle.storage.JobName,
-            "description": self.comments,
-            "releases": self._search_components(components),
-            "processInstanceID": "",
-            "applicant": self.applicant,
-            "operationType": 1,
-            "locales": ",".join(locales),
-            "dropSplitFlag": 2,
-            "fullJob": "1" if fullJob else "",
-        }
-        orderCreateData.update(self._search_tms(tmsName).model_dump())
-        return orderCreateData
-
-    def to_create_job(
-            self,
-            components: list[str],
-            tmsName: str,
-            locales: list[str],
-            fullJob: bool = True,
-            **kwargs: Any,
-    ) -> dict[str, Any]:
-        timestamp: str = datetime.datetime.now(
-            tz=datetime.timezone(datetime.timedelta(hours=8))
-        ).strftime("%Y.%m.%d.%H%M")
-        self.jobName = f"automationTest[NoTranslate]-{self.applicant}-{timestamp}"
-
-        orderCreateData: dict[str, Any] = {
-            "status": "completed",
-            "projectID": self.projectID,
-            "projectName": self.projectName,
-            "orderName": self.jobName,
             "description": self.comments,
             "releases": self._search_components(components),
             "processInstanceID": "",
