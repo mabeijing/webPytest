@@ -310,9 +310,15 @@ class JobApi(BaseApi):
                 componentStatusArray: list[JobComponentStatus] = self.searchTranslationFile(bundle)
                 for componentStatus in componentStatusArray:
                     assert componentStatus.data
-                    for component in componentStatus.data:
-                        msg = f"{componentStatus.productName}-{component.locale} status is {component.status} not 1"
-                        assert (component.status == 1), msg
+                    for jobOperate in componentStatus.data:
+                        msg = f"{componentStatus.productName}-{jobOperate.locale} status is {jobOperate.status} not 1"
+
+                        if bundle.section.push.locales == "all":
+                            assert jobOperate.status == 1, msg
+                        else:
+                            for c in bundle.section.push.components:
+                                if c.componentName == componentStatus.productName and c.locale == jobOperate.locale:
+                                    assert jobOperate.status == 1, msg
                 success = True
                 break
             except AssertionError:

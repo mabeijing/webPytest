@@ -117,8 +117,8 @@ class Section(BaseModel):
         releaseInfos: list[dict[str, Any]] = []
         for component in componentArray:
             if bundle.section.kickOff.kickType == "All":
-                assert len(
-                    bundle.section.kickOff.kickOptions) == 1, f"when allOrByLocale=All, the kickOptions length must 1"
+                msg = f"when allOrByLocale=All, the kickOptions length must 1"
+                assert len(bundle.section.kickOff.kickOptions) == 1, msg
                 kick = bundle.section.kickOff.kickOptions[0]
                 assert kick.locale == "all", f"when allOrByLocale=All, the locales must equal all."
                 localeAttributes = bundle.section.kickOff.to_all_locales()
