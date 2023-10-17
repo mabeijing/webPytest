@@ -121,54 +121,52 @@ class ProjectOut(BaseModel):
                 return ws
         raise ValueError(f"{tmsName} not in {self.wsProjectTypes}")
 
-    def _search_components(self, components: list[str]) -> list[dict[str, Any]]:
-        productNameArray: list[str] = [p.productData.productName for p in self.products]
+    def _search_components(self, bundle: Bundle) -> list[dict[str, Any]]:
+        components = bundle.section.componentNameArray
+        products: list[ProductOut] = [p for p in self.products if p.productData.productName in components]
+        assert len(products) == len(components), f"{components} not all related in {self.projectName}"
 
-        products: list[ProductOut] = [
-            p for p in self.products if p.productData.productName in components
-        ]
-        assert len(products) == len(
-            components
-        ), f"{components} not all in {productNameArray}"
-
-        return [
-            {
+        releases: list[dict[str, Any]] = []
+        for p in products:
+            based_job = bundle.storage.RecentJobs.get(p.productData.productName)
+            _release: dict[str, Any] = {
                 "releaseID": p.releaseData.releaseID,
                 "releaseName": p.releaseData.releaseName,
                 "productID": p.productData.productID,
                 "productName": p.productData.productName,
                 "resourceLocale": p.releaseData.supportedLanguages,
-                "vendors": None,
+                "vendors": None
             }
-            for p in products
-        ]
+            if based_job and not bundle.section.create.fullJob:
+                _release.update(based_job.to_dict())
+            releases.append(_release)
+
+        return releases
 
     def to_create_job(self, bundle: Bundle):
-        components = [item["componentName"] for item in bundle.section.components]
-        locales = bundle.section.locales
-        fullJob = 1
-        tmsName = bundle.section.tmsName
-
-        timestamp: str = datetime.datetime.now(
-            tz=datetime.timezone(datetime.timedelta(hours=8))
-        ).strftime("%Y.%m.%d.%H%M")
+        _tz = datetime.timezone(datetime.timedelta(hours=8))
+        timestamp: str = datetime.datetime.now(tz=_tz).strftime("%Y.%m.%d.%H%M")
         bundle.storage.JobName = f"automationTest[NoTranslate]-{self.applicant}-{timestamp}"
 
+        description: str = bundle.section.create.description
+        ws: WSProjectTypeOut = self._search_tms(bundle.section.tmsName)
         orderCreateData: dict[str, Any] = {
             "status": "completed",
             "projectID": self.projectID,
             "projectName": self.projectName,
+            "tms": ws.tms,
+            "wsProjectTypeID": ws.wsProjectTypeID,
+            "wsProjectTypeName": ws.wsProjectTypeName,
             "orderName": bundle.storage.JobName,
-            "description": self.comments,
-            "releases": self._search_components(components),
+            "description": description if description else self.comments,
+            "releases": self._search_components(bundle),
             "processInstanceID": "",
             "applicant": self.applicant,
             "operationType": 1,
-            "locales": ",".join(locales),
-            "dropSplitFlag": 2,
-            "fullJob": "1" if fullJob else "",
+            "locales": ",".join(bundle.section.locales),
+            "dropSplitFlag": 1 if bundle.section.create.splitByComponent else 2,
+            "fullJob": "1" if bundle.section.create.fullJob else "0",
         }
-        orderCreateData.update(self._search_tms(tmsName).model_dump())
         return orderCreateData
 
     def getComponentByName(self, componentName: str) -> ProductOut:

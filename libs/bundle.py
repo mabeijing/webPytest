@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Any, TYPE_CHECKING
 
-from models import ProjectOut, Section
+from models import ProjectOut, Section, RecentJob
 
 if TYPE_CHECKING:
     from .mixin_session import MixinSession
@@ -10,6 +10,8 @@ if TYPE_CHECKING:
 class Storage:
     JobID: str = ""
     JobName: str = ""
+
+    RecentJobs: dict[str, RecentJob] = {}
 
 
 class Bundle:
@@ -22,4 +24,3 @@ class Bundle:
         self.storage: Storage = Storage()  # 用例数据存储区
         self.section: Section = Section.model_validate(self._param)  # 参数化模型
         self.project: ProjectOut = self._mixin.api.project.search_detail(self)  # 系统数据模型
-
