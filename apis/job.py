@@ -236,19 +236,16 @@ class JobApi(BaseApi):
                 assert jobStatus == 20
                 success = True
                 break
-            except AssertionError as e:
+            except AssertionError:
                 time.sleep(5)
-                current_tsp: int = int(time.time())
-                print(
-                    f"duration {current_tsp - start_tsp}s, next check jobMenuType&jobStatus after 5 seconds..."
-                )
+                current_tsp: int = int(time.time()) - start_tsp
+                print(f"duration {current_tsp}s, next check jobMenuType&jobStatus after 5 seconds...")
 
             except Exception as e:
                 print(f"execute error => {str(e)}")
                 raise AssertionError(e) from e
 
-        current_tsp: int = int(time.time())
-        print(f"{bundle.storage.JobID} kick off status is jobMenuType=3&jobStatus=20")
+        print(f"{bundle.storage.JobID} kick off success.")
         return success
 
     def cancel(self, bundle: Bundle):
@@ -302,7 +299,7 @@ class JobApi(BaseApi):
 
         return [JobComponentStatus.model_validate(product) for product in products]
 
-    def wait_job_locale_pushable(self, bundle: Bundle, locales: list[str] = None):
+    def wait_job_locale_pushable(self, bundle: Bundle):
         start_tsp: int = int(time.time())
         current_tsp: int = int(time.time())
         duration: int = self.config.DURATION
@@ -310,33 +307,25 @@ class JobApi(BaseApi):
         success = False
         while current_tsp - start_tsp <= duration:
             try:
-                componentStatusArray: list[
-                    JobComponentStatus
-                ] = self.searchTranslationFile(bundle)
-
+                componentStatusArray: list[JobComponentStatus] = self.searchTranslationFile(bundle)
                 for componentStatus in componentStatusArray:
                     assert componentStatus.data
                     for component in componentStatus.data:
-                        assert (
-                                component.status == 1
-                        ), f"{componentStatus.productName}-{component.locale} status is {component.status} not 1"
-
-                # 如果没有任何异常，说明验证通过撒
+                        msg = f"{componentStatus.productName}-{component.locale} status is {component.status} not 1"
+                        assert (component.status == 1), msg
                 success = True
                 break
-            except AssertionError as e:
+            except AssertionError:
                 time.sleep(5)
-                current_tsp: int = int(time.time())
-                print(
-                    f"duration {current_tsp - start_tsp}s, next check translation progress after 5 seconds..., {str(e)}"
-                )
+                current_tsp: int = int(time.time()) - start_tsp
+                print(f"duration {current_tsp}s, next check translation progress after 5 seconds...")
 
             except Exception as e:
                 print(f"execute error => {str(e)}")
                 raise AssertionError(e) from e
 
-        current_tsp: int = int(time.time())
-        print(f"{bundle.storage.JobID} translation progress 100% in {current_tsp - start_tsp}s.")
+        current_tsp: int = int(time.time()) - start_tsp
+        print(f"{bundle.storage.JobID} translation progress 100% in {current_tsp}s.")
         return success
 
     def push_online(self, bundle: Bundle, **kwargs: Any):

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING, Literal, Optional
 from pydantic import BaseModel
 
 if TYPE_CHECKING:
@@ -29,6 +29,60 @@ class CreateParam(BaseModel):
     articleID: str = ""
 
 
+class LqeOption(BaseModel):
+    id: int = 0
+    locales: str = ""
+
+    lqaCount: int = 0
+    lqaRate: str = "0.0%"
+    lqaSuggestion: str = "30% sampling, sample words >= 500"
+    translatorID: int = 48
+
+    lqeSamplingPercentage: str = "100%"
+    lqeExcludeIceMatch: str = "true"
+    lqeExcludeHundredMatch: str = "false"
+    lqeFastTrack: str = "false"
+    lqeQualityLevel: Literal["High", "Normal", "Low"] = "High"
+    kickOffOption: Literal[1, 2, 3, 4] = 4
+    lqeSampleMode: Literal["Time-Based", "Normal"] = "Normal"
+    lqeSampleRangeStart: Optional[str] = None
+    lqeSampleRangeEnd: Optional[str] = None
+
+    def to_all_locales(self):
+        return self.model_dump(exclude={"lqaCount", "lqaRate", "lqaSuggestion", "translatorID"})
+
+    def to_per_locale(self):
+        return self.model_dump()
+
+
+class KickOption(BaseModel):
+    locale: str
+    option: Literal[1, 2, 3, 4]
+    lqe: LqeOption
+
+
+class KickOffParam(BaseModel):
+    kickType: Literal["bylocale", "All"]
+    kickOptions: list[KickOption]
+
+    def to_all_locales(self) -> list[dict]:
+        return [kick.lqe.to_all_locales() for kick in self.kickOptions]
+
+    def to_per_locale(self) -> list[dict]:
+        return [kick.lqe.to_per_locale() for kick in self.kickOptions]
+
+
+class ComponentCommit(BaseModel):
+    componentName: str
+    locale: str
+    commitMsg: str = ""
+
+
+class PushParam(BaseModel):
+    locales: list[str]
+    components: list[ComponentCommit] = []
+
+
 class Section(BaseModel):
     # 用于将用例参数转化成数据类，参数化驱动流程
     # 不处理接口参数，只处理场景参数，接口参数全部放在系统数据类处理
@@ -38,8 +92,8 @@ class Section(BaseModel):
     locales: list[str]
     components: list[Component]
     create: CreateParam
-    kickOff: int
-    push: int
+    kickOff: KickOffParam
+    push: PushParam
     regenerate: int
     redo: int
     bugfix: int
@@ -59,33 +113,26 @@ class Section(BaseModel):
         pass
 
     def kickOffOption(self, bundle: Bundle) -> list[dict[str, Any]]:
-        componentArray: list[ProductOut] = []
-
-        for componentName in self.componentNameArray:
-            component = bundle.project.getComponentByName(componentName)
-            componentArray.append(component)
-
+        componentArray: list[ProductOut] = [bundle.project.getComponentByName(c.componentName) for c in self.components]
         releaseInfos: list[dict[str, Any]] = []
         for component in componentArray:
+            if bundle.section.kickOff.kickType == "All":
+                assert len(
+                    bundle.section.kickOff.kickOptions) == 1, f"when allOrByLocale=All, the kickOptions length must 1"
+                kick = bundle.section.kickOff.kickOptions[0]
+                assert kick.locale == "all", f"when allOrByLocale=All, the locales must equal all."
+                localeAttributes = bundle.section.kickOff.to_all_locales()
+            else:
+                for index, kick in enumerate(bundle.section.kickOff.kickOptions):
+                    kick.lqe.id = index
+                    kick.lqe.locales = kick.locale
+                    kick.lqe.kickOffOption = kick.option
+                localeAttributes = bundle.section.kickOff.to_per_locale()
+
             releaseInfo: dict[str, Any] = {
                 "releaseID": component.releaseData.releaseID,
-                "allOrByLocale": "All",
-                "localeAttributes": [
-                    {
-                        "id": 1,
-                        "locales": "all",
-                        "lqeSamplingPercentage": "100%",
-                        "lqeExcludeIceMatch": "true",
-                        "lqeExcludeHundredMatch": "false",
-                        "lqeFastTrack": "false",
-                        "lqeQualityLevel": "High",
-                        "kickOffOption": 4,
-                        "lqeSampleMode": "Normal",
-                        "lqeSampleRangeStart": None,
-                        "lqeSampleRangeEnd": None,
-                        "attributes.0.kickOffOption": "4",
-                    }
-                ],
+                "allOrByLocale": bundle.section.kickOff.kickType,
+                "localeAttributes": localeAttributes,
             }
             releaseInfos.append(releaseInfo)
         return releaseInfos
